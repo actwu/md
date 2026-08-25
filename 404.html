@@ -53,29 +53,40 @@
       position: relative;
     }
 
-    /* Fixed Reusable Toggle Button (Pill shaped, zero border/outline) */
-    .toggle-sidebar-pill {
+    /* Fixed Actions Container for Sidebar Toggle and Lock/Unlock Toggle */
+    .top-actions {
       position: fixed;
       top: 0.85rem;
       right: 1rem;
       z-index: 100;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .pill-btn {
       background: rgba(250, 250, 255, 0.05);
       color: var(--text-muted);
       border: 0 !important;
       outline: 0 !important;
       padding: 0.45rem 0.85rem;
-      border-radius: 9999px; /* Pill button */
+      border-radius: 9999px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.35rem;
+      font-size: 0.8rem;
       transition: background 0.2s, color 0.2s;
     }
 
-    .toggle-sidebar-pill:hover {
+    .pill-btn:hover {
       color: var(--text-bright);
       background: var(--hover-bg);
+    }
+
+    .pill-btn.unlocked {
+      background: rgba(250, 250, 255, 0.2);
+      color: var(--text-bright);
     }
 
     /* Main Content Area */
@@ -116,13 +127,11 @@
       margin-right: calc(var(--sidebar-width) * -1);
     }
 
-    /* Top Sidebar Header Spacer to align tabs below the fixed pill */
     .sidebar-header-spacer {
       height: 3.2rem;
       flex-shrink: 0;
     }
 
-    /* Sidebar Navigation Tabs */
     .sidebar-tabs {
       display: flex;
       border-bottom: 1px solid rgba(250, 250, 255, 0.08);
@@ -211,14 +220,13 @@
       background: var(--hover-bg);
     }
 
-    /* Buttons with #fafaff 20% opacity */
     .btn-transparent {
       background: var(--accent-20);
       color: var(--text-bright);
       border: 0 !important;
       outline: 0 !important;
       padding: 0.6rem 0.8rem;
-      border-radius: 9999px; /* Pill button style */
+      border-radius: 9999px;
       cursor: pointer;
       font-size: 0.85rem;
       display: flex;
@@ -234,7 +242,6 @@
       background: rgba(250, 250, 255, 0.3);
     }
 
-    /* Inputs */
     .file-input-wrapper input[type="file"] {
       display: none;
     }
@@ -258,7 +265,6 @@
       background: rgba(250, 250, 255, 0.08);
     }
 
-    /* Document List */
     #file-list {
       list-style: none;
       display: flex;
@@ -323,10 +329,24 @@
       background: var(--hover-bg);
     }
 
-    /* Markdown Rendering & Typography */
+    /* Content Area Styles */
     #content {
       line-height: 1.7;
       font-size: 1.05rem;
+      min-height: 80vh;
+      white-space: normal;
+    }
+
+    /* Plain text editor style when unlocked */
+    #content.editable-mode {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text-bright);
+      background: rgba(250, 250, 255, 0.02);
+      padding: 1rem;
+      border-radius: 8px;
     }
 
     #content h1, #content h2, #content h3, #content h4 {
@@ -372,7 +392,6 @@
       border-radius: 0 4px 4px 0;
     }
 
-    /* Code blocks */
     #content pre {
       background: rgba(250, 250, 255, 0.03) !important;
       padding: 1.2em !important;
@@ -393,7 +412,6 @@
       color: var(--text-bright);
     }
 
-    /* Scrollbar Styling */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -413,22 +431,27 @@
 <body>
 
   <div id="app">
-    <!-- Single Reusable Fixed Toggle Button (Pill shaped, zero border/outline) -->
-    <button class="toggle-sidebar-pill" onclick="toggleSidebar()" aria-label="Toggle Sidebar" title="Toggle Sidebar">
-      <span class="iconify" data-icon="lucide:panel-right" data-width="16"></span>
-    </button>
+    <!-- Top Action Buttons -->
+    <div class="top-actions">
+      <button class="pill-btn" id="lock-btn" onclick="toggleLock()" aria-label="Toggle Edit Lock" title="Lock/Unlock Editing">
+        <span class="iconify" id="lock-icon" data-icon="lucide:lock" data-width="16"></span>
+        <span id="lock-text">Locked</span>
+      </button>
+      <button class="pill-btn" onclick="toggleSidebar()" aria-label="Toggle Sidebar" title="Toggle Sidebar">
+        <span class="iconify" data-icon="lucide:panel-right" data-width="16"></span>
+      </button>
+    </div>
 
     <!-- Document View -->
     <main>
       <div id="loader">
         <span class="iconify" data-icon="lucide:loader-2" data-width="28"></span>
       </div>
-      <div id="content"></div>
+      <div id="content" contenteditable="false" oninput="handleRealtimeInput()"></div>
     </main>
 
     <!-- Sidebar -->
     <aside id="sidebar">
-      <!-- Fixed spacer so content sits below the fixed top pill icon -->
       <div class="sidebar-header-spacer"></div>
 
       <!-- Tabs Navigation -->
@@ -501,6 +524,7 @@
 
     let documents = JSON.parse(localStorage.getItem('md_docs') || '{}');
     let currentDocKey = null;
+    let isUnlocked = false;
 
     window.addEventListener('DOMContentLoaded', () => {
       renderFileList();
@@ -534,16 +558,69 @@
       document.getElementById('content').style.opacity = '1';
     }
 
+    /* Lock/Unlock Functionality */
+    function toggleLock() {
+      if (!currentDocKey) return;
+      isUnlocked = !isUnlocked;
+      
+      const content = document.getElementById('content');
+      const lockBtn = document.getElementById('lock-btn');
+      const lockIcon = document.getElementById('lock-icon');
+      const lockText = document.getElementById('lock-text');
+
+      if (isUnlocked) {
+        // Unlock mode: Show raw markdown as plain text
+        content.contentEditable = "true";
+        content.classList.add('editable-mode');
+        content.innerText = documents[currentDocKey] || '';
+        
+        lockBtn.classList.add('unlocked');
+        lockIcon.setAttribute('data-icon', 'lucide:lock-keyhole-open');
+        lockText.innerText = 'Unlocked';
+      } else {
+        // Lock mode: Render raw text into formatted Markdown
+        content.contentEditable = "false";
+        content.classList.remove('editable-mode');
+        renderMarkdown(documents[currentDocKey] || '');
+        
+        lockBtn.classList.remove('unlocked');
+        lockIcon.setAttribute('data-icon', 'lucide:lock');
+        lockText.innerText = 'Locked';
+      }
+    }
+
+    /* Real-Time Editable Input Handler */
+    function handleRealtimeInput() {
+      if (!isUnlocked || !currentDocKey) return;
+      const content = document.getElementById('content');
+      
+      // Store plain text directly (stripping HTML execution)
+      documents[currentDocKey] = content.innerText;
+      localStorage.setItem('md_docs', JSON.stringify(documents));
+    }
+
+    /* Paste Event Handler to prevent pasting formatted HTML */
+    document.getElementById('content').addEventListener('paste', function(e) {
+      if (!isUnlocked) return;
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+
     function renderMarkdown(text) {
       document.getElementById('content').innerHTML = marked.parse(text);
     }
 
     function loadDocument(name) {
       currentDocKey = name;
-      const content = documents[name];
-      if (content) {
-        renderMarkdown(content);
+      const contentEl = document.getElementById('content');
+      
+      if (isUnlocked) {
+        contentEl.innerText = documents[name] || '';
+      } else {
+        renderMarkdown(documents[name] || '');
       }
+      
       renderFileList();
     }
 
