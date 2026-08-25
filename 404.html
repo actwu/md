@@ -3,32 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reader</title>
+  <title>Markify</title>
 
-  <!-- Iconify CDN for Lucide Icons -->
+  <!-- Iconify CDN for Icons -->
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
 
-  <!-- Highlight.js (Atom One Dark Theme) -->
+  <!-- Highlight.js & Marked -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
   <style>
+    /* Strict zero borders and zero outlines globally */
     *, *:focus, *:hover, *:active {
-      border: none !important;
-      outline: none !important;
+      border: 0 !important;
+      border-style: none !important;
+      outline: 0 !important;
+      outline-style: none !important;
+      box-shadow: none !important;
     }
 
     :root {
-      --bg-color: #0a0a0c;
-      --sidebar-bg: #0a0a0c;
-      --hover-bg: rgba(250, 250, 255, 0.08);
-      --active-bg: rgba(250, 250, 255, 0.15);
-      --accent-20: rgba(250, 250, 255, 0.2);
-      --text-muted: #71717a;
-      --text-main: #fafaff;
+      --bg-color: #000000;
+      --text-muted: #888888;
+      --text-main: #dddddd;
       --text-bright: #ffffff;
-      --sidebar-width: 300px;
+      --sidebar-width: 260px;
     }
 
     * {
@@ -43,6 +43,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
       height: 100vh;
       overflow: hidden;
+      user-select: none;
     }
 
     #app {
@@ -53,39 +54,35 @@
       position: relative;
     }
 
-    /* Fixed Actions Container for Sidebar Toggle and Lock/Unlock Toggle */
+    /* Top Right Control Bar */
     .top-actions {
       position: fixed;
-      top: 0.85rem;
+      top: 1rem;
       right: 1rem;
-      z-index: 100;
+      z-index: 200;
       display: flex;
-      gap: 0.5rem;
+      gap: 0.25rem;
+      align-items: center;
     }
 
-    .pill-btn {
-      background: rgba(250, 250, 255, 0.05);
+    .flat-btn {
+      background: transparent !important;
       color: var(--text-muted);
-      border: 0 !important;
-      outline: 0 !important;
-      padding: 0.45rem 0.85rem;
-      border-radius: 9999px;
+      padding: 0.4rem;
+      border-radius: 4px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.35rem;
-      font-size: 0.8rem;
-      transition: background 0.2s, color 0.2s;
+      font-size: 0.85rem;
+      transition: color 0.15s ease;
     }
 
-    .pill-btn:hover {
+    .flat-btn:hover {
       color: var(--text-bright);
-      background: var(--hover-bg);
     }
 
-    .pill-btn.unlocked {
-      background: rgba(250, 250, 255, 0.2);
+    .flat-btn.unlocked {
       color: var(--text-bright);
     }
 
@@ -94,206 +91,97 @@
       flex: 1;
       height: 100%;
       overflow-y: auto;
-      padding: 3rem 12% 5rem 12%;
+      padding: 3.5rem 12% 5rem 10%;
       position: relative;
+      user-select: text;
     }
 
-    /* Loader */
-    #loader {
+    /* Drag Drop Overlay Target */
+    #drop-overlay {
       display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
       color: var(--text-bright);
-      animation: spin 1s linear infinite;
+      pointer-events: none;
     }
 
-    @keyframes spin {
-      to { transform: translate(-50%, -50%) rotate(360deg); }
+    #drop-overlay.active {
+      display: flex;
     }
 
-    /* Sidebar */
+    /* Right Side Sidebar */
     aside {
       width: var(--sidebar-width);
       height: 100%;
-      background-color: var(--sidebar-bg);
+      background: transparent !important;
       display: flex;
       flex-direction: column;
-      transition: margin-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      order: 2;
+      transition: margin-right 0.2s ease;
+      user-select: none;
+      padding-top: 3.5rem;
     }
 
     aside.collapsed {
       margin-right: calc(var(--sidebar-width) * -1);
     }
 
-    .sidebar-header-spacer {
-      height: 3.2rem;
-      flex-shrink: 0;
-    }
-
-    .sidebar-tabs {
+    /* Flat Sidebar Actions Bar */
+    .sidebar-actions {
       display: flex;
-      border-bottom: 1px solid rgba(250, 250, 255, 0.08);
-      padding: 0 0.5rem;
-    }
-
-    .tab-btn {
-      flex: 1;
-      background: transparent;
-      border: none !important;
-      outline: none !important;
-      color: var(--text-muted);
-      padding: 0.6rem 0.4rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      border-radius: 4px 4px 0 0;
-      transition: color 0.2s, background 0.2s;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-bright);
-      background: var(--hover-bg);
-    }
-
-    .tab-btn.active {
-      color: var(--text-bright);
-      border-bottom: 2px solid var(--text-bright) !important;
-    }
-
-    .sidebar-body {
-      padding: 1rem;
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .tab-content {
-      display: none;
-      flex-direction: column;
-      gap: 1rem;
-      height: 100%;
-    }
-
-    .tab-content.active {
-      display: flex;
+      padding: 0 1.25rem 0.75rem 1.25rem;
     }
 
     .sidebar-title {
       font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-weight: 500;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      letter-spacing: 0.05em;
     }
 
     .action-icons {
       display: flex;
-      gap: 0.25rem;
+      gap: 0.2rem;
     }
 
-    .icon-btn {
-      background: transparent;
-      border: none !important;
-      outline: none !important;
-      color: var(--text-muted);
-      padding: 0.25rem;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color 0.2s, background 0.2s;
-    }
-
-    .icon-btn:hover {
-      color: var(--text-bright);
-      background: var(--hover-bg);
-    }
-
-    .btn-transparent {
-      background: var(--accent-20);
-      color: var(--text-bright);
-      border: 0 !important;
-      outline: 0 !important;
-      padding: 0.6rem 0.8rem;
-      border-radius: 9999px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      width: 100%;
-      transition: background 0.2s;
-      text-align: center;
-    }
-
-    .btn-transparent:hover {
-      background: rgba(250, 250, 255, 0.3);
-    }
-
-    .file-input-wrapper input[type="file"] {
-      display: none;
-    }
-
-    textarea.transparent-input {
-      width: 100%;
-      height: 100px;
-      background: rgba(250, 250, 255, 0.05);
-      color: var(--text-bright);
-      border: 0 !important;
-      outline: none !important;
-      font-size: 0.8rem;
-      font-family: inherit;
-      resize: none;
-      padding: 0.75rem;
-      border-radius: 8px;
-      transition: background 0.2s;
-    }
-
-    textarea.transparent-input:focus {
-      background: rgba(250, 250, 255, 0.08);
-    }
-
+    /* Flat Document List */
     #file-list {
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0.1rem;
       overflow-y: auto;
       flex: 1;
+      padding: 0 0.75rem;
     }
 
     #file-list li {
-      padding: 0.5rem 0.6rem;
-      border-radius: 6px;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       color: var(--text-muted);
-      transition: background 0.2s, color 0.2s;
+      transition: color 0.15s ease;
+      background: transparent !important;
     }
 
     #file-list li:hover {
-      background: var(--hover-bg);
       color: var(--text-bright);
     }
 
     #file-list li.active {
       color: var(--text-bright);
-      background: var(--active-bg);
       font-weight: 500;
     }
 
@@ -309,15 +197,12 @@
     #file-list .delete-btn {
       color: var(--text-muted);
       opacity: 0;
-      background: transparent;
-      border: none !important;
-      outline: none !important;
+      background: transparent !important;
       cursor: pointer;
       display: flex;
       align-items: center;
-      padding: 0.2rem;
-      border-radius: 3px;
-      transition: opacity 0.2s, color 0.2s;
+      padding: 0.1rem;
+      transition: opacity 0.15s, color 0.15s;
     }
 
     #file-list li:hover .delete-btn {
@@ -326,34 +211,54 @@
 
     #file-list .delete-btn:hover {
       color: var(--text-bright);
-      background: var(--hover-bg);
     }
 
-    /* Content Area Styles */
+    /* Bottom Sidebar Footer Info */
+    .sidebar-footer {
+      padding: 1.25rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Content Area Typography & Clean Flat Rendering */
     #content {
       line-height: 1.7;
       font-size: 1.05rem;
       min-height: 80vh;
-      white-space: normal;
+      background: transparent !important;
     }
 
-    /* Plain text editor style when unlocked */
     #content.editable-mode {
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
       font-size: 0.95rem;
       white-space: pre-wrap;
       word-break: break-word;
       color: var(--text-bright);
-      background: rgba(250, 250, 255, 0.02);
-      padding: 1rem;
-      border-radius: 8px;
+      padding: 0;
     }
 
-    #content h1, #content h2, #content h3, #content h4 {
+    #content h1 {
       color: var(--text-bright);
-      margin: 1.8em 0 0.6em 0;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 1.2rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    #content h2 {
+      color: var(--text-bright);
+      font-size: 1.5rem;
       font-weight: 600;
-      letter-spacing: -0.01em;
+      margin: 1.8em 0 0.6em 0;
+    }
+
+    #content h3, #content h4 {
+      color: var(--text-bright);
+      margin: 1.5em 0 0.5em 0;
+      font-weight: 600;
     }
 
     #content p {
@@ -362,16 +267,8 @@
 
     #content a {
       color: var(--text-bright);
-      background-color: var(--accent-20);
-      padding: 0.15em 0.4em;
-      border-radius: 3px;
-      text-decoration: none;
-      transition: background-color 0.2s;
-    }
-
-    #content a:hover {
-      background-color: rgba(250, 250, 255, 0.35);
-      text-decoration: none;
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
 
     #content ul, #content ol {
@@ -384,19 +281,15 @@
     }
 
     #content blockquote {
-      padding: 0.5em 1em;
-      color: var(--text-main);
-      background: var(--accent-20);
+      padding-left: 1em;
+      color: var(--text-muted);
       margin: 1.2em 0;
-      border-left: 3px solid var(--text-bright);
-      border-radius: 0 4px 4px 0;
     }
 
     #content pre {
-      background: rgba(250, 250, 255, 0.03) !important;
-      padding: 1.2em !important;
+      background: transparent !important;
+      padding: 1em 0 !important;
       margin: 1.5em 0 !important;
-      border-radius: 6px;
       overflow-x: auto;
     }
 
@@ -406,111 +299,157 @@
     }
 
     #content :not(pre) > code {
-      background: var(--accent-20);
-      padding: 0.2em 0.4em;
-      border-radius: 3px;
+      color: var(--text-bright);
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    /* Custom Flat Modals (Replacing browser alert/confirm/prompt) */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--bg-color);
+      padding: 1.5rem 2rem;
+      border-radius: 6px;
+      max-width: 400px;
+      width: 90%;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .modal-text {
+      color: var(--text-bright);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .modal-input {
+      background: transparent;
+      color: var(--text-bright);
+      font-size: 0.95rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--text-muted) !important;
+      width: 100%;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .modal-btn {
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 0.3rem 0.6rem;
+      transition: color 0.15s ease;
+    }
+
+    .modal-btn:hover {
       color: var(--text-bright);
     }
 
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 4px;
+      height: 4px;
     }
     ::-webkit-scrollbar-track {
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: rgba(250, 250, 255, 0.1);
-      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(250, 250, 255, 0.2);
+      background: rgba(255, 255, 255, 0.25);
     }
   </style>
 </head>
 <body>
 
   <div id="app">
-    <!-- Top Action Buttons -->
+    <!-- Top Right Control Icons -->
     <div class="top-actions">
-      <button class="pill-btn" id="lock-btn" onclick="toggleLock()" aria-label="Toggle Edit Lock" title="Lock/Unlock Editing">
-        <span class="iconify" id="lock-icon" data-icon="lucide:lock" data-width="16"></span>
-        <span id="lock-text">Locked</span>
+      <button class="flat-btn" id="lock-btn" onclick="toggleLock()" aria-label="Toggle Edit" title="Lock/Unlock Editing">
+        <span class="iconify" id="lock-icon" data-icon="lucide:lock" data-width="18"></span>
       </button>
-      <button class="pill-btn" onclick="toggleSidebar()" aria-label="Toggle Sidebar" title="Toggle Sidebar">
-        <span class="iconify" data-icon="lucide:panel-right" data-width="16"></span>
+      <button class="flat-btn" onclick="toggleFullScreen()" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
+        <span class="iconify" id="fullscreen-icon" data-icon="lucide:maximize" data-width="18"></span>
+      </button>
+      <button class="flat-btn" onclick="toggleSidebar()" aria-label="Toggle Sidebar" title="Toggle Sidebar">
+        <span class="iconify" data-icon="lucide:panel-right" data-width="18"></span>
       </button>
     </div>
 
-    <!-- Document View -->
-    <main>
-      <div id="loader">
-        <span class="iconify" data-icon="lucide:loader-2" data-width="28"></span>
-      </div>
+    <!-- Main Editor & Reader Area -->
+    <main id="main-container">
       <div id="content" contenteditable="false" oninput="handleRealtimeInput()"></div>
     </main>
 
-    <!-- Sidebar -->
+    <!-- Drag & Drop Fullscreen Overlay -->
+    <div id="drop-overlay">
+      <span class="iconify" data-icon="lucide:upload-cloud" data-width="48"></span>
+      <p>Drop Markdown file here to load</p>
+    </div>
+
+    <!-- Right Side Flat Navigation -->
     <aside id="sidebar">
-      <div class="sidebar-header-spacer"></div>
-
-      <!-- Tabs Navigation -->
-      <div class="sidebar-tabs">
-        <button class="tab-btn active" id="tab-btn-1" onclick="switchTab(1)">
-          <span class="iconify" data-icon="lucide:files" data-width="14"></span>
-          Docs
-        </button>
-        <button class="tab-btn" id="tab-btn-2" onclick="switchTab(2)">
-          <span class="iconify" data-icon="lucide:upload-cloud" data-width="14"></span>
-          Upload
-        </button>
-        <button class="tab-btn" id="tab-btn-3" onclick="switchTab(3)">
-          <span class="iconify" data-icon="lucide:link" data-width="14"></span>
-          URL
-        </button>
-      </div>
-
-      <!-- Tab Contents -->
-      <div class="sidebar-body">
-        <!-- Tab 1: Documents List -->
-        <div class="tab-content active" id="tab-1">
-          <div class="sidebar-title">
-            <span>Documents</span>
-            <div class="action-icons">
-              <button class="icon-btn" title="Upload File" onclick="switchTab(2)">
-                <span class="iconify" data-icon="lucide:upload-cloud" data-width="14"></span>
-              </button>
-              <button class="icon-btn" title="Add URL" onclick="switchTab(3)">
-                <span class="iconify" data-icon="lucide:link" data-width="14"></span>
-              </button>
-            </div>
-          </div>
-          <ul id="file-list"></ul>
-        </div>
-
-        <!-- Tab 2: Upload Files -->
-        <div class="tab-content" id="tab-2">
-          <span class="sidebar-title">Upload Markdown</span>
-          <div class="file-input-wrapper">
-            <label class="btn-transparent" for="file-upload">
-              <span class="iconify" data-icon="lucide:file-plus" data-width="16"></span>
-              Choose Files...
-            </label>
-            <input type="file" id="file-upload" accept=".md,.markdown,.txt" multiple onchange="handleFileUpload(event)" />
-          </div>
-        </div>
-
-        <!-- Tab 3: Bulk URLs -->
-        <div class="tab-content" id="tab-3">
-          <span class="sidebar-title">Fetch from URL</span>
-          <textarea id="url-input" class="transparent-input" placeholder="Paste .md URLs (1 per line)..."></textarea>
-          <button class="btn-transparent" onclick="handleBulkUrls()">
-            <span class="iconify" data-icon="lucide:download" data-width="16"></span>
-            Fetch URLs
+      <div class="sidebar-actions">
+        <span class="sidebar-title">MARKIFY</span>
+        <div class="action-icons">
+          <button class="flat-btn" title="Create New File" onclick="createNewFile()">
+            <span class="iconify" data-icon="lucide:file-plus" data-width="16"></span>
+          </button>
+          <button class="flat-btn" title="Upload Markdown File" onclick="triggerFileInput()">
+            <span class="iconify" data-icon="lucide:upload" data-width="16"></span>
+          </button>
+          <button class="flat-btn" title="Fetch MD from URL" onclick="promptUrlUpload()">
+            <span class="iconify" data-icon="lucide:link" data-width="16"></span>
           </button>
         </div>
       </div>
+
+      <!-- File List -->
+      <ul id="file-list"></ul>
+
+      <!-- Footer Stats -->
+      <div class="sidebar-footer">
+        <span id="stat-words">0 words</span>
+        <span id="stat-chars">0 characters</span>
+      </div>
     </aside>
+
+    <input type="file" id="file-upload" class="hidden-input" accept=".md,.markdown,.txt" multiple onchange="handleFileUpload(event)" />
+  </div>
+
+  <!-- Custom HTML Modal Element -->
+  <div class="modal-backdrop" id="custom-modal">
+    <div class="modal-box">
+      <div class="modal-text" id="modal-msg"></div>
+      <input type="text" class="modal-input" id="modal-input-field" style="display: none;" />
+      <div class="modal-buttons">
+        <button class="modal-btn" id="modal-cancel-btn" style="display: none;">Cancel</button>
+        <button class="modal-btn" id="modal-ok-btn">OK</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -522,43 +461,61 @@
       langPrefix: 'hljs language-'
     });
 
-    let documents = JSON.parse(localStorage.getItem('md_docs') || '{}');
-    let currentDocKey = null;
+    let documents = JSON.parse(localStorage.getItem('markify_docs') || '{}');
+    let currentDocKey = localStorage.getItem('markify_current_doc') || null;
     let isUnlocked = false;
 
+    // Load initial layout and documents state from LocalStorage
     window.addEventListener('DOMContentLoaded', () => {
+      // 1. Sidebar state persistence
+      const isSidebarCollapsed = localStorage.getItem('markify_sidebar_collapsed') === 'true';
+      if (isSidebarCollapsed) {
+        document.getElementById('sidebar').classList.add('collapsed');
+      }
+
+      // 2. Default documents if empty
+      if (Object.keys(documents).length === 0) {
+        documents["01_Genesis"] = "# Genesis\n\n## Chapter 1\n\n1. In the beginning, God created the heavens and the earth.\n2. The earth was without form and void, and darkness was over the face of the deep.";
+        documents["02_Exodus"] = "# Exodus\n\n## Chapter 1\n\n1. These are the names of the sons of Israel who came to Egypt with Jacob.";
+        saveDocuments();
+      }
+
       renderFileList();
+      
       const keys = Object.keys(documents);
       if (keys.length > 0) {
-        loadDocument(keys[0]);
+        if (currentDocKey && documents[currentDocKey]) {
+          loadDocument(currentDocKey);
+        } else {
+          loadDocument(keys[0]);
+        }
       }
     });
+
+    function saveDocuments() {
+      localStorage.setItem('markify_docs', JSON.stringify(documents));
+    }
 
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('collapsed');
+      const isCollapsed = sidebar.classList.contains('collapsed');
+      localStorage.setItem('markify_sidebar_collapsed', isCollapsed);
     }
 
-    function switchTab(tabIndex) {
-      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', idx + 1 === tabIndex);
-      });
-      document.querySelectorAll('.tab-content').forEach((content, idx) => {
-        content.classList.toggle('active', idx + 1 === tabIndex);
-      });
+    function toggleFullScreen() {
+      const fsIcon = document.getElementById('fullscreen-icon');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        fsIcon.setAttribute('data-icon', 'lucide:minimize');
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+          fsIcon.setAttribute('data-icon', 'lucide:maximize');
+        }
+      }
     }
 
-    function showLoader() {
-      document.getElementById('loader').style.display = 'block';
-      document.getElementById('content').style.opacity = '0.2';
-    }
-
-    function hideLoader() {
-      document.getElementById('loader').style.display = 'none';
-      document.getElementById('content').style.opacity = '1';
-    }
-
-    /* Lock/Unlock Functionality */
     function toggleLock() {
       if (!currentDocKey) return;
       isUnlocked = !isUnlocked;
@@ -566,40 +523,33 @@
       const content = document.getElementById('content');
       const lockBtn = document.getElementById('lock-btn');
       const lockIcon = document.getElementById('lock-icon');
-      const lockText = document.getElementById('lock-text');
 
       if (isUnlocked) {
-        // Unlock mode: Show raw markdown as plain text
         content.contentEditable = "true";
         content.classList.add('editable-mode');
         content.innerText = documents[currentDocKey] || '';
         
         lockBtn.classList.add('unlocked');
         lockIcon.setAttribute('data-icon', 'lucide:lock-keyhole-open');
-        lockText.innerText = 'Unlocked';
       } else {
-        // Lock mode: Render raw text into formatted Markdown
         content.contentEditable = "false";
         content.classList.remove('editable-mode');
         renderMarkdown(documents[currentDocKey] || '');
         
         lockBtn.classList.remove('unlocked');
         lockIcon.setAttribute('data-icon', 'lucide:lock');
-        lockText.innerText = 'Locked';
       }
     }
 
-    /* Real-Time Editable Input Handler */
     function handleRealtimeInput() {
       if (!isUnlocked || !currentDocKey) return;
       const content = document.getElementById('content');
-      
-      // Store plain text directly (stripping HTML execution)
       documents[currentDocKey] = content.innerText;
-      localStorage.setItem('md_docs', JSON.stringify(documents));
+      saveDocuments();
+      updateStats(content.innerText);
     }
 
-    /* Paste Event Handler to prevent pasting formatted HTML */
+    // Force Paste as Plain Text only to eliminate hidden HTML/CSS tags
     document.getElementById('content').addEventListener('paste', function(e) {
       if (!isUnlocked) return;
       e.preventDefault();
@@ -607,27 +557,60 @@
       document.execCommand('insertText', false, text);
     });
 
+    // Global Paste Listener: Paste a valid URL anywhere to fetch MD directly
+    window.addEventListener('paste', function(e) {
+      if (isUnlocked) return;
+      const pastedData = e.clipboardData.getData('text');
+      if (isValidUrl(pastedData.trim())) {
+        e.preventDefault();
+        fetchMdFromUrl(pastedData.trim());
+      }
+    });
+
+    function isValidUrl(string) {
+      try {
+        const url = new URL(string);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch (_) {
+        return false;  
+      }
+    }
+
     function renderMarkdown(text) {
       document.getElementById('content').innerHTML = marked.parse(text);
+      updateStats(text);
     }
 
     function loadDocument(name) {
       currentDocKey = name;
-      const contentEl = document.getElementById('content');
+      localStorage.setItem('markify_current_doc', name);
       
+      const contentEl = document.getElementById('content');
       if (isUnlocked) {
         contentEl.innerText = documents[name] || '';
       } else {
         renderMarkdown(documents[name] || '');
       }
-      
+      updateStats(documents[name] || '');
       renderFileList();
     }
 
-    function deleteDocument(e, name) {
+    async function createNewFile() {
+      const fileName = await customPrompt("Enter new file name:", "Untitled.md");
+      if (!fileName) return;
+      const cleanName = fileName.endsWith('.md') ? fileName.slice(0, -3) : fileName;
+      documents[cleanName] = `# ${cleanName}\n\nStart writing...`;
+      saveDocuments();
+      loadDocument(cleanName);
+    }
+
+    async function deleteDocument(e, name) {
       e.stopPropagation();
+      const confirmed = await customConfirm(`Delete document "${name}"?`);
+      if (!confirmed) return;
+
       delete documents[name];
-      localStorage.setItem('md_docs', JSON.stringify(documents));
+      saveDocuments();
       
       if (currentDocKey === name) {
         const remainingKeys = Object.keys(documents);
@@ -635,7 +618,9 @@
           loadDocument(remainingKeys[0]);
         } else {
           currentDocKey = null;
+          localStorage.removeItem('markify_current_doc');
           document.getElementById('content').innerHTML = '';
+          updateStats('');
         }
       }
       renderFileList();
@@ -652,7 +637,7 @@
         
         const nameWrapper = document.createElement('div');
         nameWrapper.className = 'file-item-name';
-        nameWrapper.innerHTML = `<span class="iconify" data-icon="lucide:file-text" data-width="14"></span> <span>${escapeHtml(name)}</span>`;
+        nameWrapper.innerHTML = `<span>${escapeHtml(name)}</span>`;
 
         const delBtn = document.createElement('button');
         delBtn.className = 'delete-btn';
@@ -665,65 +650,160 @@
       });
     }
 
+    function triggerFileInput() {
+      document.getElementById('file-upload').click();
+    }
+
     function handleFileUpload(event) {
       const files = Array.from(event.target.files);
       if (!files.length) return;
 
-      showLoader();
       let readCount = 0;
-
       files.forEach(file => {
         const reader = new FileReader();
         reader.onload = function(e) {
-          documents[file.name] = e.target.result;
+          const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+          documents[nameWithoutExt] = e.target.result;
           readCount++;
           if (readCount === files.length) {
-            localStorage.setItem('md_docs', JSON.stringify(documents));
-            hideLoader();
+            saveDocuments();
             renderFileList();
-            loadDocument(files[files.length - 1].name);
-            switchTab(1);
+            loadDocument(nameWithoutExt);
           }
         };
         reader.readAsText(file);
       });
-
       event.target.value = '';
     }
 
-    async function handleBulkUrls() {
-      const textarea = document.getElementById('url-input');
-      const urls = textarea.value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
-      if (!urls.length) return;
-
-      showLoader();
-
-      for (const url of urls) {
-        try {
-          const response = await fetch(url);
-          if (!response.ok) continue;
-          const text = await response.text();
-          const fileName = url.split('/').pop().split('?')[0] || `Remote-${Date.now()}.md`;
-          documents[fileName] = text;
-        } catch (err) {
-          console.error(`Failed to fetch: ${url}`);
-        }
+    async function promptUrlUpload() {
+      const url = await customPrompt("Paste Markdown file URL:");
+      if (url && isValidUrl(url.trim())) {
+        fetchMdFromUrl(url.trim());
       }
+    }
 
-      localStorage.setItem('md_docs', JSON.stringify(documents));
-      hideLoader();
-      textarea.value = '';
-      renderFileList();
-      
-      const keys = Object.keys(documents);
-      if (keys.length > 0) {
-        loadDocument(keys[keys.length - 1]);
+    async function fetchMdFromUrl(url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Network error");
+        const text = await response.text();
+        const fileName = url.split('/').pop().split('?')[0].replace(/\.[^/.]+$/, "") || `Remote_${Date.now()}`;
+        documents[fileName] = text;
+        saveDocuments();
+        renderFileList();
+        loadDocument(fileName);
+      } catch (err) {
+        customAlert("Failed to fetch Markdown from URL. Check CORS or URL validity.");
       }
-      switchTab(1);
+    }
+
+    // Drag & Drop Functionality
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropOverlay.classList.add('active');
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      if (e.clientX === 0 && e.clientY === 0) {
+        dropOverlay.classList.remove('active');
+      }
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropOverlay.classList.remove('active');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileUpload({ target: { files: files } });
+      }
+    });
+
+    function updateStats(text) {
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      document.getElementById('stat-words').innerText = `${words.toLocaleString()} words`;
+      document.getElementById('stat-chars').innerText = `${chars.toLocaleString()} characters`;
     }
 
     function escapeHtml(str) {
       return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    /* Custom HTML Modals Implementation (Replacing Native Dialogs) */
+    function customAlert(message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-msg');
+        const input = document.getElementById('modal-input-field');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const okBtn = document.getElementById('modal-ok-btn');
+
+        msg.innerText = message;
+        input.style.display = 'none';
+        cancelBtn.style.display = 'none';
+        modal.classList.add('active');
+
+        okBtn.onclick = () => {
+          modal.classList.remove('active');
+          resolve();
+        };
+      });
+    }
+
+    function customConfirm(message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-msg');
+        const input = document.getElementById('modal-input-field');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const okBtn = document.getElementById('modal-ok-btn');
+
+        msg.innerText = message;
+        input.style.display = 'none';
+        cancelBtn.style.display = 'block';
+        modal.classList.add('active');
+
+        okBtn.onclick = () => {
+          modal.classList.remove('active');
+          resolve(true);
+        };
+
+        cancelBtn.onclick = () => {
+          modal.classList.remove('active');
+          resolve(false);
+        };
+      });
+    }
+
+    function customPrompt(message, defaultValue = '') {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const msg = document.getElementById('modal-msg');
+        const input = document.getElementById('modal-input-field');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+        const okBtn = document.getElementById('modal-ok-btn');
+
+        msg.innerText = message;
+        input.value = defaultValue;
+        input.style.display = 'block';
+        cancelBtn.style.display = 'block';
+        modal.classList.add('active');
+        input.focus();
+
+        okBtn.onclick = () => {
+          const val = input.value;
+          modal.classList.remove('active');
+          resolve(val);
+        };
+
+        cancelBtn.onclick = () => {
+          modal.classList.remove('active');
+          resolve(null);
+        };
+      });
     }
   </script>
 </body>
