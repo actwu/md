@@ -21,7 +21,7 @@
             position:fixed;
         right: 0;
         height: 60px;
-        backdrop-filter: blur(10px);
+        background: #0a0a0c !important;
         justify-content: space-around;
         padding: 0 1rem;
       }
@@ -40,9 +40,8 @@
         right: 0;
         width: 100dvw !important;
         height: 50dvh !important;
+        background: #0a0a0c !important;
         z-index: 190;
-        background: rgba(10, 10, 10, 0.95) !important;
-        backdrop-filter: blur(10px);
         padding-top: 1rem;
         margin-right: 0 !important;
         transform: translateY(0);
@@ -71,7 +70,7 @@
     }
 
     :root {
-      --bg-color: #000000;
+      --bg-color: #0a0a0c;
       --text-muted: #888888;
       --text-main: #dddddd;
       --text-bright: #ffffff;
@@ -166,7 +165,6 @@
     aside {
       width: var(--sidebar-width);
       height: 100dvh;
-      background: transparent !important;
       display: flex;
       flex-direction: column;
       order: 2;
