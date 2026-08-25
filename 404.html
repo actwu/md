@@ -3,22 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Markdown Reader</title>
-  
-  <!-- Highlight.js CSS (Atom One Dark Theme) -->
+  <title>Reader</title>
+
+  <!-- Iconify CDN for Lucide Icons -->
+  <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+
+  <!-- Highlight.js (Atom One Dark Theme) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" />
-  <!-- Marked parser and Highlight.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
   <style>
+    *, *:focus, *:hover, *:active {
+      border: none !important;
+      outline: none !important;
+    }
+
     :root {
       --bg-color: #0a0a0c;
-      --sidebar-bg: #121216;
-      --hover-bg: #1d1d24;
-      --text-color: #e1e1e6;
-      --muted-text: #888893;
-      --accent-color: #3b82f6;
+      --sidebar-bg: #0a0a0c;
+      --hover-bg: rgba(250, 250, 255, 0.08);
+      --active-bg: rgba(250, 250, 255, 0.15);
+      --accent-20: rgba(250, 250, 255, 0.2);
+      --text-muted: #71717a;
+      --text-main: #fafaff;
+      --text-bright: #ffffff;
+      --sidebar-width: 300px;
     }
 
     * {
@@ -29,19 +39,43 @@
 
     body {
       background-color: var(--bg-color);
-      color: var(--text-color);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      display: flex;
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
       height: 100vh;
       overflow: hidden;
     }
 
-    /* Main Container */
     #app {
       display: flex;
       width: 100vw;
       height: 100vh;
+      overflow: hidden;
       position: relative;
+    }
+
+    /* Fixed Reusable Toggle Button (Pill shaped, zero border/outline) */
+    .toggle-sidebar-pill {
+      position: fixed;
+      top: 0.85rem;
+      right: 1rem;
+      z-index: 100;
+      background: rgba(250, 250, 255, 0.05);
+      color: var(--text-muted);
+      border: 0 !important;
+      outline: 0 !important;
+      padding: 0.45rem 0.85rem;
+      border-radius: 9999px; /* Pill button */
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .toggle-sidebar-pill:hover {
+      color: var(--text-bright);
+      background: var(--hover-bg);
     }
 
     /* Main Content Area */
@@ -49,155 +83,235 @@
       flex: 1;
       height: 100%;
       overflow-y: auto;
-      padding: 3rem 15% 5rem 15%;
+      padding: 3rem 12% 5rem 12%;
       position: relative;
     }
 
-    /* Loader (No text) */
+    /* Loader */
     #loader {
       display: none;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 36px;
-      height: 36px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--accent-color);
-      animation: spin 0.8s linear infinite;
+      color: var(--text-bright);
+      animation: spin 1s linear infinite;
     }
 
     @keyframes spin {
       to { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
-    /* Floating Sidebar Toggle Button */
-    #toggle-btn {
-      position: fixed;
-      top: 1.5rem;
-      right: 1.5rem;
-      background: var(--sidebar-bg);
-      color: var(--text-color);
-      border: none;
-      outline: none;
-      padding: 0.6rem 0.9rem;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 100;
-      font-size: 0.9rem;
-      transition: background 0.2s;
-    }
-
-    #toggle-btn:hover {
-      background: var(--hover-bg);
-    }
-
-    /* Right Sidebar */
+    /* Sidebar */
     aside {
-      width: 320px;
+      width: var(--sidebar-width);
       height: 100%;
       background-color: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      padding: 1.5rem;
-      position: fixed;
-      right: -320px;
-      top: 0;
-      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      z-index: 90;
+      transition: margin-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    aside.open {
-      right: 0;
+    aside.collapsed {
+      margin-right: calc(var(--sidebar-width) * -1);
     }
 
-    .sidebar-section {
+    /* Top Sidebar Header Spacer to align tabs below the fixed pill */
+    .sidebar-header-spacer {
+      height: 3.2rem;
+      flex-shrink: 0;
+    }
+
+    /* Sidebar Navigation Tabs */
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(250, 250, 255, 0.08);
+      padding: 0 0.5rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none !important;
+      outline: none !important;
+      color: var(--text-muted);
+      padding: 0.6rem 0.4rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 4px 4px 0 0;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-bright);
+      background: var(--hover-bg);
+    }
+
+    .tab-btn.active {
+      color: var(--text-bright);
+      border-bottom: 2px solid var(--text-bright) !important;
+    }
+
+    .sidebar-body {
+      padding: 1rem;
+      flex: 1;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
     }
 
-    .sidebar-section h3 {
-      font-size: 0.8rem;
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    .sidebar-title {
+      font-size: 0.75rem;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--muted-text);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    input[type="text"] {
-      width: 100%;
-      padding: 0.6rem 0.8rem;
-      background: var(--bg-color);
-      border: none;
+    .action-icons {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none !important;
+      outline: none !important;
+      color: var(--text-muted);
+      padding: 0.25rem;
       border-radius: 4px;
-      color: var(--text-color);
-      outline: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .icon-btn:hover {
+      color: var(--text-bright);
+      background: var(--hover-bg);
+    }
+
+    /* Buttons with #fafaff 20% opacity */
+    .btn-transparent {
+      background: var(--accent-20);
+      color: var(--text-bright);
+      border: 0 !important;
+      outline: 0 !important;
+      padding: 0.6rem 0.8rem;
+      border-radius: 9999px; /* Pill button style */
+      cursor: pointer;
       font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      transition: background 0.2s;
+      text-align: center;
     }
 
-    .file-input-wrapper {
-      position: relative;
+    .btn-transparent:hover {
+      background: rgba(250, 250, 255, 0.3);
     }
 
+    /* Inputs */
     .file-input-wrapper input[type="file"] {
       display: none;
     }
 
-    .btn {
-      display: block;
+    textarea.transparent-input {
       width: 100%;
-      padding: 0.6rem;
-      background: var(--bg-color);
-      color: var(--text-color);
-      border: none;
-      border-radius: 4px;
-      text-align: center;
-      cursor: pointer;
-      font-size: 0.85rem;
+      height: 100px;
+      background: rgba(250, 250, 255, 0.05);
+      color: var(--text-bright);
+      border: 0 !important;
+      outline: none !important;
+      font-size: 0.8rem;
+      font-family: inherit;
+      resize: none;
+      padding: 0.75rem;
+      border-radius: 8px;
       transition: background 0.2s;
     }
 
-    .btn:hover {
-      background: var(--hover-bg);
+    textarea.transparent-input:focus {
+      background: rgba(250, 250, 255, 0.08);
     }
 
-    /* File List */
+    /* Document List */
     #file-list {
       list-style: none;
-      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 0.25rem;
+      overflow-y: auto;
+      flex: 1;
     }
 
     #file-list li {
-      padding: 0.6rem 0.8rem;
-      border-radius: 4px;
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 0.85rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: var(--muted-text);
+      color: var(--text-muted);
       transition: background 0.2s, color 0.2s;
     }
 
     #file-list li:hover {
       background: var(--hover-bg);
-      color: var(--text-color);
+      color: var(--text-bright);
     }
 
     #file-list li.active {
-      color: var(--accent-color);
-      background: var(--hover-bg);
+      color: var(--text-bright);
+      background: var(--active-bg);
+      font-weight: 500;
+    }
+
+    #file-list .file-item-name {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     #file-list .delete-btn {
-      color: var(--muted-text);
+      color: var(--text-muted);
       opacity: 0;
-      transition: opacity 0.2s;
+      background: transparent;
+      border: none !important;
+      outline: none !important;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0.2rem;
+      border-radius: 3px;
+      transition: opacity 0.2s, color 0.2s;
     }
 
     #file-list li:hover .delete-btn {
@@ -205,28 +319,38 @@
     }
 
     #file-list .delete-btn:hover {
-      color: #ef4444;
+      color: var(--text-bright);
+      background: var(--hover-bg);
     }
 
-    /* Markdown Output Styles */
+    /* Markdown Rendering & Typography */
     #content {
       line-height: 1.7;
-      font-size: 1rem;
+      font-size: 1.05rem;
     }
 
     #content h1, #content h2, #content h3, #content h4 {
-      color: #fff;
-      margin: 1.5em 0 0.5em 0;
+      color: var(--text-bright);
+      margin: 1.8em 0 0.6em 0;
       font-weight: 600;
+      letter-spacing: -0.01em;
     }
 
     #content p {
-      margin-bottom: 1em;
-      color: #d1d5db;
+      margin-bottom: 1.2em;
     }
 
     #content a {
-      color: var(--accent-color);
+      color: var(--text-bright);
+      background-color: var(--accent-20);
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: background-color 0.2s;
+    }
+
+    #content a:hover {
+      background-color: rgba(250, 250, 255, 0.35);
       text-decoration: none;
     }
 
@@ -235,68 +359,138 @@
       padding-left: 1.5em;
     }
 
-    #content blockquote {
-      padding-left: 1em;
-      color: var(--muted-text);
-      margin: 1em 0;
+    #content li {
+      margin-bottom: 0.4em;
     }
 
-    /* Borderless Code blocks */
+    #content blockquote {
+      padding: 0.5em 1em;
+      color: var(--text-main);
+      background: var(--accent-20);
+      margin: 1.2em 0;
+      border-left: 3px solid var(--text-bright);
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* Code blocks */
     #content pre {
-      background: transparent !important;
-      padding: 1em 0 !important;
-      margin: 1em 0 !important;
-      border: none !important;
-      border-radius: 0 !important;
+      background: rgba(250, 250, 255, 0.03) !important;
+      padding: 1.2em !important;
+      margin: 1.5em 0 !important;
+      border-radius: 6px;
       overflow-x: auto;
     }
 
     #content code {
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
       font-size: 0.9em;
-      border: none !important;
     }
 
     #content :not(pre) > code {
-      background: var(--sidebar-bg);
+      background: var(--accent-20);
       padding: 0.2em 0.4em;
       border-radius: 3px;
+      color: var(--text-bright);
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(250, 250, 255, 0.1);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(250, 250, 255, 0.2);
     }
   </style>
 </head>
 <body>
 
   <div id="app">
-    <button id="toggle-btn" onclick="toggleSidebar()">Files ☰</button>
-    
+    <!-- Single Reusable Fixed Toggle Button (Pill shaped, zero border/outline) -->
+    <button class="toggle-sidebar-pill" onclick="toggleSidebar()" aria-label="Toggle Sidebar" title="Toggle Sidebar">
+      <span class="iconify" data-icon="lucide:panel-right" data-width="16"></span>
+    </button>
+
+    <!-- Document View -->
     <main>
-      <div id="loader"></div>
+      <div id="loader">
+        <span class="iconify" data-icon="lucide:loader-2" data-width="28"></span>
+      </div>
       <div id="content"></div>
     </main>
 
+    <!-- Sidebar -->
     <aside id="sidebar">
-      <div class="sidebar-section">
-        <h3>Upload File</h3>
-        <div class="file-input-wrapper">
-          <label class="btn" for="file-upload">Choose .md file</label>
-          <input type="file" id="file-upload" accept=".md,.markdown,.txt" onchange="handleFileUpload(event)" />
+      <!-- Fixed spacer so content sits below the fixed top pill icon -->
+      <div class="sidebar-header-spacer"></div>
+
+      <!-- Tabs Navigation -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-1" onclick="switchTab(1)">
+          <span class="iconify" data-icon="lucide:files" data-width="14"></span>
+          Docs
+        </button>
+        <button class="tab-btn" id="tab-btn-2" onclick="switchTab(2)">
+          <span class="iconify" data-icon="lucide:upload-cloud" data-width="14"></span>
+          Upload
+        </button>
+        <button class="tab-btn" id="tab-btn-3" onclick="switchTab(3)">
+          <span class="iconify" data-icon="lucide:link" data-width="14"></span>
+          URL
+        </button>
+      </div>
+
+      <!-- Tab Contents -->
+      <div class="sidebar-body">
+        <!-- Tab 1: Documents List -->
+        <div class="tab-content active" id="tab-1">
+          <div class="sidebar-title">
+            <span>Documents</span>
+            <div class="action-icons">
+              <button class="icon-btn" title="Upload File" onclick="switchTab(2)">
+                <span class="iconify" data-icon="lucide:upload-cloud" data-width="14"></span>
+              </button>
+              <button class="icon-btn" title="Add URL" onclick="switchTab(3)">
+                <span class="iconify" data-icon="lucide:link" data-width="14"></span>
+              </button>
+            </div>
+          </div>
+          <ul id="file-list"></ul>
         </div>
-      </div>
 
-      <div class="sidebar-section">
-        <h3>Fetch URL</h3>
-        <input type="text" id="url-input" placeholder="Paste .md URL and press Enter" onkeydown="handleUrlSubmit(event)" />
-      </div>
+        <!-- Tab 2: Upload Files -->
+        <div class="tab-content" id="tab-2">
+          <span class="sidebar-title">Upload Markdown</span>
+          <div class="file-input-wrapper">
+            <label class="btn-transparent" for="file-upload">
+              <span class="iconify" data-icon="lucide:file-plus" data-width="16"></span>
+              Choose Files...
+            </label>
+            <input type="file" id="file-upload" accept=".md,.markdown,.txt" multiple onchange="handleFileUpload(event)" />
+          </div>
+        </div>
 
-      <div class="sidebar-section" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
-        <h3>Stored Documents</h3>
-        <ul id="file-list"></ul>
+        <!-- Tab 3: Bulk URLs -->
+        <div class="tab-content" id="tab-3">
+          <span class="sidebar-title">Fetch from URL</span>
+          <textarea id="url-input" class="transparent-input" placeholder="Paste .md URLs (1 per line)..."></textarea>
+          <button class="btn-transparent" onclick="handleBulkUrls()">
+            <span class="iconify" data-icon="lucide:download" data-width="16"></span>
+            Fetch URLs
+          </button>
+        </div>
       </div>
     </aside>
   </div>
 
   <script>
-    // Marked syntax highlighting configuration
     marked.setOptions({
       highlight: function(code, lang) {
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
@@ -317,12 +511,22 @@
     });
 
     function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('open');
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed');
+    }
+
+    function switchTab(tabIndex) {
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx + 1 === tabIndex);
+      });
+      document.querySelectorAll('.tab-content').forEach((content, idx) => {
+        content.classList.toggle('active', idx + 1 === tabIndex);
+      });
     }
 
     function showLoader() {
       document.getElementById('loader').style.display = 'block';
-      document.getElementById('content').style.opacity = '0.3';
+      document.getElementById('content').style.opacity = '0.2';
     }
 
     function hideLoader() {
@@ -332,13 +536,6 @@
 
     function renderMarkdown(text) {
       document.getElementById('content').innerHTML = marked.parse(text);
-    }
-
-    function saveToLocalStorage(name, content) {
-      documents[name] = content;
-      localStorage.setItem('md_docs', JSON.stringify(documents));
-      renderFileList();
-      loadDocument(name);
     }
 
     function loadDocument(name) {
@@ -376,58 +573,80 @@
         li.className = name === currentDocKey ? 'active' : '';
         li.onclick = () => loadDocument(name);
         
-        const textSpan = document.createElement('span');
-        textSpan.style.overflow = 'hidden';
-        textSpan.style.textOverflow = 'ellipsis';
-        textSpan.style.whiteSpace = 'nowrap';
-        textSpan.textContent = name;
+        const nameWrapper = document.createElement('div');
+        nameWrapper.className = 'file-item-name';
+        nameWrapper.innerHTML = `<span class="iconify" data-icon="lucide:file-text" data-width="14"></span> <span>${escapeHtml(name)}</span>`;
 
-        const delBtn = document.createElement('span');
+        const delBtn = document.createElement('button');
         delBtn.className = 'delete-btn';
-        delBtn.innerHTML = '&#215;';
+        delBtn.innerHTML = `<span class="iconify" data-icon="lucide:x" data-width="14"></span>`;
         delBtn.onclick = (e) => deleteDocument(e, name);
 
-        li.appendChild(textSpan);
+        li.appendChild(nameWrapper);
         li.appendChild(delBtn);
         list.appendChild(li);
       });
     }
 
     function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
 
-      const reader = new FileReader();
       showLoader();
-      
-      reader.onload = function(e) {
-        hideLoader();
-        saveToLocalStorage(file.name, e.target.result);
-      };
-      
-      reader.readAsText(file);
+      let readCount = 0;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          documents[file.name] = e.target.result;
+          readCount++;
+          if (readCount === files.length) {
+            localStorage.setItem('md_docs', JSON.stringify(documents));
+            hideLoader();
+            renderFileList();
+            loadDocument(files[files.length - 1].name);
+            switchTab(1);
+          }
+        };
+        reader.readAsText(file);
+      });
+
       event.target.value = '';
     }
 
-    async function handleUrlSubmit(event) {
-      if (event.key !== 'Enter') return;
-      const url = event.target.value.trim();
-      if (!url) return;
+    async function handleBulkUrls() {
+      const textarea = document.getElementById('url-input');
+      const urls = textarea.value.split('\n').map(u => u.trim()).filter(u => u.length > 0);
+      if (!urls.length) return;
 
       showLoader();
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Fetch failed');
-        const text = await response.text();
-        
-        const fileName = url.split('/').pop().split('?')[0] || 'Remote File';
-        saveToLocalStorage(fileName, text);
-        event.target.value = '';
-      } catch (err) {
-        alert('Could not fetch URL. Make sure CORS is enabled on the remote server.');
-      } finally {
-        hideLoader();
+
+      for (const url of urls) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const text = await response.text();
+          const fileName = url.split('/').pop().split('?')[0] || `Remote-${Date.now()}.md`;
+          documents[fileName] = text;
+        } catch (err) {
+          console.error(`Failed to fetch: ${url}`);
+        }
       }
+
+      localStorage.setItem('md_docs', JSON.stringify(documents));
+      hideLoader();
+      textarea.value = '';
+      renderFileList();
+      
+      const keys = Object.keys(documents);
+      if (keys.length > 0) {
+        loadDocument(keys[keys.length - 1]);
+      }
+      switchTab(1);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
   </script>
 </body>
