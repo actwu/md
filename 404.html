@@ -5,15 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Markify</title>
 
-  <!-- Iconify CDN for Icons -->
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
 
-  <!-- Highlight.js & Marked -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 
   <style>
+    /* Portrait Mode: Bottom Navigation Bar */
+    @media (orientation: portrait) {
+      .top-actions {
+        top: unset !important;
+        bottom: 0;
+        left: 0;
+            position:fixed;
+        right: 0;
+        height: 60px;
+        backdrop-filter: blur(10px);
+        justify-content: space-around;
+        padding: 0 1rem;
+      }
+
+      .top-actions .flat-btn {
+        flex: 1;
+        height: 100%;
+        border-radius: 0;
+      }
+
+      aside {
+        position: fixed;
+        top:unset;
+        bottom: 60px; /* Offset to sit above the bottom nav bar */
+        left: 0;
+        right: 0;
+        width: 100dvw !important;
+        height: 50dvh !important;
+        z-index: 190;
+        background: rgba(10, 10, 10, 0.95) !important;
+        backdrop-filter: blur(10px);
+        padding-top: 1rem;
+        margin-right: 0 !important;
+        transform: translateY(0);
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+      }
+
+      aside.collapsed {
+        transform: translateY(calc(100% + 60px));
+      }
+
+      main {
+        padding: 1.5rem 5% 5rem 5%;
+      }
+    }
+
+    
+    
     /* Strict zero borders and zero outlines globally */
     *, *:focus, *:hover, *:active {
       border: 0 !important;
@@ -115,7 +162,7 @@
       display: flex;
     }
 
-    /* Right Side Sidebar */
+    /* Right Side Sidebar (Default Landscape) */
     aside {
       width: var(--sidebar-width);
       height: 100dvh;
@@ -123,7 +170,7 @@
       display: flex;
       flex-direction: column;
       order: 2;
-      transition: margin-right 0.2s ease;
+      transition: margin-right 0.2s ease, transform 0.2s ease;
       user-select: none;
       padding-top: 3.5rem;
     }
@@ -131,6 +178,7 @@
     aside.collapsed {
       margin-right: calc(var(--sidebar-width) * -1);
     }
+
 
     /* Flat Sidebar Actions Bar */
     .sidebar-actions {
@@ -343,7 +391,6 @@
       color: var(--text-bright);
       font-size: 0.95rem;
       padding: 0.4rem 0;
-      border-bottom: 1px solid var(--text-muted) !important;
       width: 100%;
     }
 
@@ -386,7 +433,6 @@
 <body>
 
   <div id="app">
-    <!-- Top Right Control Icons -->
     <div class="top-actions">
       <button class="flat-btn" id="lock-btn" onclick="toggleLock()" aria-label="Toggle Edit" title="Lock/Unlock Editing">
         <span class="iconify" id="lock-icon" data-icon="lucide:lock" data-width="18"></span>
@@ -399,18 +445,15 @@
       </button>
     </div>
 
-    <!-- Main Editor & Reader Area -->
     <main id="main-container">
       <div id="content" contenteditable="false" oninput="handleRealtimeInput()"></div>
     </main>
 
-    <!-- Drag & Drop Fullscreen Overlay -->
     <div id="drop-overlay">
       <span class="iconify" data-icon="lucide:upload-cloud" data-width="48"></span>
       <p>Drop Markdown file here to load</p>
     </div>
 
-    <!-- Right Side Flat Navigation -->
     <aside id="sidebar">
       <div class="sidebar-actions">
         <span class="sidebar-title">MARKIFY</span>
@@ -427,10 +470,8 @@
         </div>
       </div>
 
-      <!-- File List -->
       <ul id="file-list"></ul>
 
-      <!-- Footer Stats -->
       <div class="sidebar-footer">
         <span id="stat-words">0 words</span>
         <span id="stat-chars">0 characters</span>
@@ -440,7 +481,6 @@
     <input type="file" id="file-upload" class="hidden-input" accept=".md,.markdown,.txt" multiple onchange="handleFileUpload(event)" />
   </div>
 
-  <!-- Custom HTML Modal Element -->
   <div class="modal-backdrop" id="custom-modal">
     <div class="modal-box">
       <div class="modal-text" id="modal-msg"></div>
